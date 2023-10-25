@@ -4,6 +4,7 @@ import pkg_pg from 'pg';
 import { Server, Socket } from 'socket.io';
 import jwt from "jsonwebtoken";
 import cookieParser from 'cookie-parser';
+import path from 'path';
 
 import userRoute from './Routes/User';
 
@@ -22,11 +23,11 @@ const pool = new Pool();
 app.use("/user/", userRoute);
 
 app.get("/", (req,res) => {
-    res.sendFile(`${__dirname}/../static/index.html`);
+    res.sendFile(path.resolve(`${__dirname}/../static/index.html`));
 })
 
 app.get("/favicon", (_,res) => {
-    res.sendFile(`${__dirname}/../static/favicon.png`);
+    res.sendFile(path.resolve(`${__dirname}/../static/favicon.png`));
 })
 
 app.get("/authenticate", async (req,res) => {
