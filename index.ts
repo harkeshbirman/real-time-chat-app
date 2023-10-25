@@ -22,11 +22,11 @@ const pool = new Pool();
 app.use("/user/", userRoute);
 
 app.get("/", (req,res) => {
-    res.sendFile(`${__dirname}/static/index.html`);
+    res.sendFile(`${__dirname}/../static/index.html`);
 })
 
 app.get("/favicon", (_,res) => {
-    res.sendFile(`${__dirname}/static/favicon.png`);
+    res.sendFile(`${__dirname}/../static/favicon.png`);
 })
 
 app.get("/authenticate", async (req,res) => {
