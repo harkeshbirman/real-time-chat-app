@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="icon" type="image/png" href="/favicon">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="main">
+        <!-- <h1>Login</h1>
+        <label for="token">Enter Your Token</label>
+        <input type="text" id="token" placeholder="Token...">
+        <button onclick="login()">Login</button> -->
+
+
+
+        <h1>Real-Time Text App</h1>
+        <h2 id="username"></h2>
+        <label for="to">To:</label>
+        <input type="text" id="to" placeholder="Enter name">
+
+        <textarea id="message" placeholder="Type your message..."></textarea>
+        <button onclick="sendMessage()">Send</button>
+
+        <ul id="messages"></ul>
+
+    </div>
+    <script>
+        // let socket = 4;
+        // async function login() {
+        //     const token = document.getElementById("token").value;
+        //     const mainPage = await fetch("/login");
+        //     const mainPageHTML = await mainPage.text();
+           
+        //     let mainComp = document.getElementById("main");
+        //     mainComp.innerHTML = mainPageHTML;
+
+        //     socket = await io.connect("http://192.168.109.51:8080/", {
+        //         auth: {token}
+        //     })
+        // }
+
+        let token = prompt("enter your token");
+
+        const socket = io.connect({
+            auth: {token}
+        });
+
+        const username = JSON.parse(window.atob(token.split('.')[1])).username;
+        document.getElementById("username").innerText = username;
+        
+        function sendMessage() {
+            const to = document.getElementById('to').value;
+            const message = document.getElementById('message').value;
+
+            socket.emit('private message', {to, message});
+
+            document.getElementById('message').value = '';
+
+            const li = document.createElement('li');
+            li.textContent = `You: ${message}`;
+            document.getElementById('messages').appendChild(li);
+        }
+
+        socket.on('private message', (data) => {
+            const li = document.createElement('li');
+            li.textContent = `${data.from}: ${data.message}`;
+            document.getElementById('messages').appendChild(li);
+        });
+
+        socket.on('new-user-joined', (data) => {
+            const li = document.createElement('li');
+            li.textContent = `${data.from}: ${data.message}`;
+            document.getElementById('messages').appendChild(li);
+        })
+
+        socket.on('disconnected', (name) => {
+            const li = document.createElement('li');
+            li.textContent = `${name} left`;
+            document.getElementById('messages').appendChild(li);
+        })
+    </script>
+</body>
+</html>
