@@ -82,12 +82,14 @@ io.on('connection', (socket: Socket) => {
     nameUserid[name] = socket.id;
     useridName[socket.id] = name;
     socket.broadcast.emit('new-user-joined', { from: name, message: `${name} joined` })
-    // console.log(useridName, nameUserid);
 
     // Handle private messages
     socket.on('private message', (data: { to: string; message: string }) => {
         const { to, message } = data;
         socket.to(nameUserid[to]).emit('private message', { from: useridName[socket.id], message });
+        const sender = socket.data.username;
+        const sent_at = new Date().toISOString().substring(0,19);
+        pool.query(`INSERT INTO messages (sender, receiver, message, sent_at) VALUES ('${sender}', '${to}', '${message}', '${sent_at}')`)
     });
 
     // fires the disconnection event
@@ -99,10 +101,6 @@ io.on('connection', (socket: Socket) => {
         delete nameUserid[name];
     });
 });
-
-
-
-
 
 
 
