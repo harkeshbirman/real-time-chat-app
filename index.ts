@@ -1,10 +1,9 @@
 import express from 'express';
 import 'dotenv/config';
-import pkg_pg from 'pg';
+import pkg_pg, { Connection } from 'pg';
 import { Server, Socket } from 'socket.io';
 import jwt from "jsonwebtoken";
 import cookieParser from 'cookie-parser';
-import path from 'path';
 
 import userRoute from './Routes/User';
 
@@ -22,27 +21,13 @@ const pool = new Pool();
 
 app.use("/user/", userRoute);
 
+/**
+ * @method GET
+ * @returns {string} - welcomes who visit "/" path
+ */
 app.get("/", (req,res) => {
-    res.sendFile(path.resolve(`${__dirname}/../static/index.html`));
+    res.send("welcome to my chat-app");
 })
-
-app.get("/favicon", (_,res) => {
-    res.sendFile(path.resolve(`${__dirname}/../static/favicon.png`));
-})
-
-app.get("/authenticate", async (req,res) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    const secretKey = process.env.JWT_SECRET_KEY;
-    
-    const result = jwt.verify(token as string, secretKey as unknown as jwt.Secret);
-    if (!result) {
-        res.status(400).json({message: 'invalid token'});
-    }
-
-    const user = await pool.query(`SELECT username, email FROM accounts WHERE username = '${(result as unknown as jwt.JwtPayload).username}'`);
-    res.status(200).send(user.rows);
-})
-
 
 const io = new Server(server, {
     cors: {
@@ -50,11 +35,11 @@ const io = new Server(server, {
     }
 });
 
-app.get("/login", (req,res) => {
-    res.sendFile(`${__dirname}/static/index.html`)
-})
-
-
+/**
+ * socket authenticator
+ * @param {Socket} socket - the connection request
+ * @param {Function} next - the callback function
+ */
 io.use(async(socket, next) => {
     const jwtToken = socket.handshake.auth.token;
     if (!jwtToken) {
@@ -71,22 +56,24 @@ io.use(async(socket, next) => {
     }
 })
 
-let useridName: { [char: string]: string } = {};
-let nameUserid: { [char: string]: string } = {};
+// maps socketid to name
+let socketidName: { [char: string]: string } = {};
+// maps name to socketid
+let nameSocketid: { [char: string]: string } = {};
 
 io.on('connection', (socket: Socket) => {
 
     // broadcasts the name of everyone who joins the chat
     const name = socket.data.username;
     console.log(`${name} with ${socket.id} connected!`);
-    nameUserid[name] = socket.id;
-    useridName[socket.id] = name;
+    nameSocketid[name] = socket.id;
+    socketidName[socket.id] = name;
     socket.broadcast.emit('new-user-joined', { from: name, message: `${name} joined` })
 
     // Handle private messages
     socket.on('private message', (data: { to: string; message: string }) => {
         const { to, message } = data;
-        socket.to(nameUserid[to]).emit('private message', { from: useridName[socket.id], message });
+        socket.to(nameSocketid[to]).emit('private message', { from: socketidName[socket.id], message });
         const sender = socket.data.username;
         const sent_at = new Date().toISOString().substring(0,19);
         pool.query(`INSERT INTO messages (sender, receiver, message, sent_at) VALUES ('${sender}', '${to}', '${message}', '${sent_at}')`)
@@ -95,10 +82,10 @@ io.on('connection', (socket: Socket) => {
     // fires the disconnection event
     socket.on('disconnect', () => {
         console.log(`${socket.id} disconnected!`);
-        let name = useridName[socket.id];
+        let name = socketidName[socket.id];
         socket.broadcast.emit("disconnected", name);
-        delete useridName[socket.id];
-        delete nameUserid[name];
+        delete socketidName[socket.id];
+        delete nameSocketid[name];
     });
 });
 
